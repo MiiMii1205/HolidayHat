@@ -10,30 +10,32 @@ A dynamic hat that changes based on holidays
 
 ## How it works ##
 
-This mod adds a single hat option in the passport called the "Holiday Hat". It shows up as a firework emoji.
+This mod adds a hat option in the passport called the "Holiday Hat". It shows up as a firework emoji.
 
-This option activates differents hats based on a secular holiday calendar.
+This option activates different hats based on a secular holiday calendar.
 
-For example, if the mod detects that today is Christmas (December 25th), then with the Holiday Hat active, your scout will wear a santa hat.
+For example, if the mod detects that today is Christmas (December 25th), then with the Holiday Hat active, your scout will wear a Santa hat.
 
-To calculate the current holiday, the mod uses the *host's game boot time*.
+To calculate the current holiday, the mod uses the *host's game boot time* according to the host's local clock.
 
-So if the host booted the game on December 25th (Christmas), then everyone with the Holiday Hat will be
-wearing a santa hat, even for those who joins the game *after* the 25th.
+So if the host booted the game on December 25th (Christmas), then everyone in the room wearing the Holiday Hat will be
+wearing a Santa hat, even for players who join the game *after* the 25th. 
+The date is also locked down as long as the room stays active, even should the host quits.
 
-There are a couple of different supported holidays, along with a couple of unique, custom hats that shows up on some holidays.
+The mod supports several holidays, along with a few unique custom hats that appear on specific holidays.
+All custom hats are also available as separate hat options in the passport should you want to wear them normally. 
 
 ## Configure ##
 
-The mod comes with configs that allows you to configure how the "Holiday Hat" option works:
+The mod comes with configuration options that allow you to configure how the "Holiday Hat" option works:
 
-- `Default Hat Index`: Holds the index of which hat to wear on normal days. Set it to the position of your favorite hat as it appears in the passport (first hat starts at `0`). Can also be a custom modded hat as long as it's at the same spot in the passport for everyone.
+- `Default Hat Index`: Holds the index of which hat to wear on normal days. Set it to the index of your favorite hat in the passport. (first hat starts at `0`). Can also be a modded hat as long as it's at the same spot in the passport for everyone.
 
-  If, for whatever reasons, it points to the "Holiday Hat" option, it defaults to the scout cap.
+  If, for whatever reason, it points to the "Holiday Hat" option, it defaults to the scout cap.
+
+To change this setting, you'll need to run the mod first for it to generate the file, then use your mod manager to edit it.
+You can also use a mod like [ModConfig](https://thunderstore.io/c/peak/p/PEAKModding/ModConfig/) to change it in-game.
 
 ## Feedback ##
 
-If you have any suggestion (like new hats or comments about current hats or whatnot), feel free to post it here and
-we'll take a look.
-
-Also, if you really want some of these custom hats as proper options in the passport, do so on the Issues page. If there's enough interest, we might release the hat in another mod.
+If you have any suggestions (like new hats or comments about current hats or whatnot), feel free to post it [here](https://github.com/MiiMii1205/HolidayHat/issues/new), and we'll take a look.
