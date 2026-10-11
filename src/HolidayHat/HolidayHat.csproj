@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>netstandard2.1</TargetFramework>
+        <AssemblyName>com.github.MiiMii1205.HolidayHat</AssemblyName>
+        <AssemblyTitle>HolidayHat</AssemblyTitle>
+        <Version>0.1.0</Version>
+    </PropertyGroup>
+    
+    <ItemGroup>
+        <PackageReference Update="Hamunii.BepInEx.AutoPlugin" Version="*"/>
+        <PackageReference Include="PEAKModding.PEAKLib.Core" Version="*"/>
+        <PackageReference Include="Snosz-SkinColorSliders" Version="1.5.0" Private="False"/>
+        <PackageReference Include="cretapark-More_Customizations" Version="*" Private="False"/>
+        <PackageReference Include="PEAKModding-SoftDependencyFix" Version="*" Private="False"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <Folder Include="Bundles\"/>
+    </ItemGroup>
+    
+</Project>
