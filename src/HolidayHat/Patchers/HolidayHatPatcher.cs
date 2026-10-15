@@ -80,22 +80,28 @@ public static class HolidayHatPatcher
         HolidayHatPlugin.SetHatIndex(new DateTime(DateTime.Today.Year, 1, 1),
             customization.hats.Length - 1);
 
+        HolidayHatPlugin.SetHatLookup("PartyHat", customization.hats.Length - 1);
+
         HolidayHatPlugin.MinHatIndex = customization.hats.Length - 1;
 
         CreateHatOption(customization, "StPatrickHat", HolidayHatPlugin.StPatrickHatIcon);
 
         HolidayHatPlugin.SetHatIndex(new DateTime(DateTime.Today.Year, 3, 17),
             customization.hats.Length - 1);
+        
+        HolidayHatPlugin.SetHatLookup("StPatrickHat", customization.hats.Length - 1);
 
         CreateHatOption(customization, "FishHat", HolidayHatPlugin.FishHatIcon);
 
         HolidayHatPlugin.SetHatIndex(new DateTime(DateTime.Today.Year, 4, 1),
             customization.hats.Length - 1);
+        HolidayHatPlugin.SetHatLookup("FishHat", customization.hats.Length - 1);
 
         CreateHatOption(customization, "BunnyEars", HolidayHatPlugin.BunnyEarsIcon);
 
         HolidayHatPlugin.SetHatIndex(HolidayHatPlugin.GetGregorianEaster(DateTime.Today.Year),
             customization.hats.Length - 1);
+        HolidayHatPlugin.SetHatLookup("BunnyEars", customization.hats.Length - 1);
 
         CreateHatOption(customization, "HardHat", HolidayHatPlugin.HardHatIcon);
 
@@ -104,6 +110,7 @@ public static class HolidayHatPatcher
 
         HolidayHatPlugin.SetHatIndex(HolidayHatPlugin.GetMondayOfMonth(DateTime.Today.Year, 9, 1, cal),
             customization.hats.Length - 1);
+        HolidayHatPlugin.SetHatLookup("HardHat", customization.hats.Length - 1);
 
         CreateHatOption(customization, "PilgrimHat", HolidayHatPlugin.PilgrimHatIcon);
 
@@ -113,12 +120,14 @@ public static class HolidayHatPatcher
 
         HolidayHatPlugin.SetHatIndex(HolidayHatPlugin.GetMondayOfMonth(DateTime.Today.Year, 10, 2, cal),
             customization.hats.Length - 1);
+        HolidayHatPlugin.SetHatLookup("PilgrimHat", customization.hats.Length - 1);
 
         CreateHatOption(customization, "SantaHat", HolidayHatPlugin.SantaHatIcon);
 
         HolidayHatPlugin.SetHatIndex(
             new DateTime(DateTime.Today.Year, 12, 25),
             customization.hats.Length - 1);
+        HolidayHatPlugin.SetHatLookup("SantaHat", customization.hats.Length - 1);
 
         CreateHatOption(customization, "Ribbon", HolidayHatPlugin.RibbonHatIcon);
 
@@ -126,6 +135,8 @@ public static class HolidayHatPatcher
             new DateTime(DateTime.Today.Year, 12, 26),
             customization.hats.Length - 1);
 
+        HolidayHatPlugin.SetHatLookup("Ribbon", customization.hats.Length - 1);
+        
         HolidayHatPlugin.MaxHatIndex = customization.hats.Length - 1;
 
         // Updates the hat override index for the bundled fits
@@ -239,7 +250,17 @@ public static class HolidayHatPatcher
     public static void CharacterCustomizationPlayerDataChangedPostfix(CharacterCustomization __instance,
         PersistentPlayerData playerData)
     {
-        UpdateHolidayHat(__instance._character, playerData);
+
+        if (__instance._character.isBot && __instance.overridePhotonPlayer != null)
+        {
+            // Bot that mimics a player. Let's use their data instead
+            UpdateHolidayHat(__instance._character, playerData, __instance.overridePhotonPlayer);
+        }
+        else
+        {
+            UpdateHolidayHat(__instance._character, playerData);
+        }
+        
     }
 
     [HarmonyPatch(typeof(CharacterCustomization), nameof(CharacterCustomization.Awake))]
@@ -442,12 +463,8 @@ public static class HolidayHatPatcher
                     "_Texture3",
                     "_Texture4",
                 ]);
-
-                var ok = shoe.GetColor("_Tint").ToOklab();
                 
-                ok.L *= tintMult;
-
-                ms[1].SetColor("_Tint", ok.ToColor());
+                ms[1].SetColor("_Tint", shoe.GetColor("_Tint") * tintMult);
 
                 ms[1].SetTextureScale(CharacterCustomization.MainTex,
                     shoe.name == "M_Tarnished Gold Starboy Fit" ? new Vector2(0.75f, 1) : Vector2.one);
@@ -998,11 +1015,9 @@ public static class HolidayHatPatcher
         }
         else if (currentHat == HolidayHatPlugin.HolidayHatCosmeticIndex)
         {
-            currentHat = HolidayHatPlugin.ShouldUseDefaultHat(
-                pToUse)
-                ? HolidayHatPlugin.GetDefaultPlayerHat(pToUse)
-                : HolidayHatPlugin.GetPlayerHolidayHat(pToUse);
-
+            currentHat = HolidayHatPlugin.GetHatOrDefault(
+                pToUse);
+            
             HolidayHatPlugin.Log.LogDebug(
                 $"Showing hat @ {currentHat} on dummy...");
 
@@ -1027,11 +1042,16 @@ public static class HolidayHatPatcher
                 }
 
                 __instance.refs.playerHats[currentHat].SetMaterials([..pms]);
-            }
+            } 
 
             var customHatIndex = currentHat - HolidayHatPlugin.MinHatIndex;
         
             var ms = __instance.refs.playerHats[currentHat].materials;
+
+            for (var i = 0; i < ms.Length; i++)
+            {
+                ms[i] = Object.Instantiate(ms[i]);
+            }
             
             SetHatMaterial(ms, playerData, HolidayHatPlugin.customHolidayHats[customHatIndex]);
             
@@ -1151,10 +1171,11 @@ public static class HolidayHatPatcher
         return skinC;
     }
 
-    public static void UpdateHolidayHat(Character newCharacter, PersistentPlayerData data)
+    public static void UpdateHolidayHat(Character newCharacter, PersistentPlayerData data,
+        Photon.Realtime.Player? player = null)
     {
-        var player = newCharacter.photonView.Owner;
-
+        player ??= (newCharacter.view ?? newCharacter.photonView).Owner;
+        
         var fitIndex = CharacterCustomization.GetFitIndex(data);
 
         var currentHat = data.customizationData.currentHat;
@@ -1171,10 +1192,8 @@ public static class HolidayHatPatcher
         }
         else if (currentHat == HolidayHatPlugin.HolidayHatCosmeticIndex)
         {
-            currentHat = HolidayHatPlugin.ShouldUseDefaultHat(
-                player)
-                ? HolidayHatPlugin.GetDefaultPlayerHat(player)
-                : HolidayHatPlugin.GetPlayerHolidayHat(player);
+            currentHat = HolidayHatPlugin.GetHatOrDefault(
+                player);
 
             for (int index1 = 0; index1 < newCharacter.refs.customization.refs.playerHats.Length; ++index1)
             {
@@ -1243,8 +1262,8 @@ public static class HolidayHatPatcher
                     else
                     {
                         // Try getting the original mesh's material
-                        var ogM = HolidayHatPlugin.customHolidayHats[customHatIndex].GetComponent<Renderer>()
-                            .materials[i];
+                        var ogM = Object.Instantiate(HolidayHatPlugin.customHolidayHats[customHatIndex].GetComponent<Renderer>()
+                            .materials[i]);
 
                         // copy only important parameters
 
@@ -1304,8 +1323,8 @@ public static class HolidayHatPatcher
                     else
                     {
                         // Try getting the original mesh's material
-                        var ogM = HolidayHatPlugin.customHolidayHats[customHatIndex].GetComponent<Renderer>()
-                            .materials[i];
+                        var ogM = Object.Instantiate(HolidayHatPlugin.customHolidayHats[customHatIndex].GetComponent<Renderer>()
+                            .materials[i]);
 
                         // copy only important parameters
 

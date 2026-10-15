@@ -12,6 +12,7 @@ using PEAKLib.Core;
 using PEAKLib.Core.Extensions;
 using Photon.Pun;
 using UnityEngine;
+using Zorro.Core;
 
 namespace HolidayHat;
 
@@ -205,6 +206,8 @@ public partial class HolidayHatPlugin : BaseUnityPlugin
     }
 
     private static Dictionary<Photon.Realtime.Player, int> _defaultHatIndexes = new();
+    private static Dictionary<string, int> _hatIndexLookup = new();
+    private static Dictionary<Photon.Realtime.Player, DateTime> _playerBootDates = new();
 
     public static int GetHatIndex(DateTime date)
     {
@@ -218,8 +221,17 @@ public partial class HolidayHatPlugin : BaseUnityPlugin
 
     public static void SetHatIndex(DateTime date, int index)
     {
-        holidayDictionary.Add(new DateTime(2000, date.Date.Month, date.Date.Day), index);
-        Log.LogInfo($"Inserted Hat inx [{index}] for {date:m}");
+        var d = new DateTime(2000, date.Date.Month, date.Date.Day);
+        if (holidayDictionary.ContainsKey(d))
+        {
+            holidayDictionary[d] = index;
+            Log.LogInfo($"Changed Hat idx [{index}] for {date:m}");
+        }
+        else
+        {
+            holidayDictionary.Add(d, index);
+            Log.LogInfo($"Inserted Hat idx [{index}] for {date:m}");
+        }
     }
 
     private void LoadHolidayHatAssets(PeakBundle bundle)
@@ -1340,11 +1352,11 @@ public partial class HolidayHatPlugin : BaseUnityPlugin
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static int GetDefaultPlayerHat(Photon.Realtime.Player player)
     {
-        // TODO: Should we support special calendars, find a way to send player's preferences 
-
         // Get the default index for the current player
         var defHat = _defaultHatIndexes[player];
-        return defHat == HolidayHatCosmeticIndex
+
+        return (defHat == HolidayHatCosmeticIndex || (defHat < 0 ||
+                                                      defHat > Singleton<Customization>.Instance.hats.Length))
             ?
             // Default to 0 then
             0
@@ -1381,7 +1393,7 @@ public partial class HolidayHatPlugin : BaseUnityPlugin
             if (bot.refs.customization.overridePhotonPlayer != null &&
                 bot.refs.customization.overridePhotonPlayer.UserId == player.UserId)
             {
-                HolidayHatPatcher.UpdateHolidayHat(bot, playerData);
+                HolidayHatPatcher.UpdateHolidayHat(bot, playerData, bot.refs.customization.overridePhotonPlayer);
                 Log.LogDebug($"Updated hat for {bot} (copying {playerCharacter})");
             }
         }
@@ -1414,8 +1426,70 @@ public partial class HolidayHatPlugin : BaseUnityPlugin
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static int GetPlayerHolidayHat(Photon.Realtime.Player? player)
+    public static void UpdatePlayerBootDate(Photon.Realtime.Player player, DateTime playerDate)
     {
-        return HolidayHatIndex;
+        if (_playerBootDates.ContainsKey(player))
+        {
+            _playerBootDates[player] = playerDate;
+            Log.LogDebug($"Updated player boot date of {player} to {playerDate}");
+        }
+        else if (_playerBootDates.TryAdd(player, playerDate))
+        {
+            Log.LogDebug($"Assigned player boot date for {player} to {playerDate}");
+        }
+    }
+
+    public static int GetHatOrDefault(Photon.Realtime.Player player)
+    {
+        if (_playerBootDates.TryGetValue(player, out var d))
+        {
+            if (d.Year == ClientDate.Year)
+            {
+                // Use the normal index collection
+
+                return ShouldUseDefaultHat(
+                    player)
+                    ? GetDefaultPlayerHat(player)
+                    : GetHatIndex(d);
+            }
+            else
+            {
+                // We'll have to recalculate the date manually
+                Log.LogInfo(
+                    $"{player.NickName}'s year is different from this client. Falling back to manual calculations...");
+
+                var calcHatIndex = CheckSecularHolidays(d);
+
+                if (calcHatIndex == null)
+                {
+                    return GetDefaultPlayerHat(player);
+                }
+
+                if (int.TryParse(calcHatIndex, out var h))
+                {
+                    return h;
+                }
+
+                return _hatIndexLookup[calcHatIndex.Replace(".prefab", "")];
+            }
+        }
+        else
+        {
+            Log.LogDebug($"Falling back to hat @ {HolidayHatIndex}");
+            return HolidayHatIndex;
+        }
+    }
+
+    public static void SetHatLookup(string name, int index)
+    {
+        if (_hatIndexLookup.TryAdd(name, index))
+        {
+            Log.LogInfo($"Inserted Hat idx [{index}] for {name}");
+        }
+        else
+        {
+            _hatIndexLookup[name] = index;
+            Log.LogInfo($"Changed Hat idx [{index}] for {name}");
+        }
     }
 }

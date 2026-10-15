@@ -74,6 +74,12 @@ public class HolidayHatHandler: MonoBehaviourPunCallbacks
             $"Sending our default hat index ({HolidayHatPlugin.DefaultPlayerHatIndex.Value}) to everyone...");
         
         photonView.RPC(nameof(RPC_SyncDefaultHat), RpcTarget.All, PhotonNetwork.LocalPlayer.ActorNumber, HolidayHatPlugin.DefaultPlayerHatIndex.Value);
+        
+        HolidayHatPlugin.Log.LogInfo($"Sending our boot date to other players");
+        
+
+        photonView.RPC(nameof(RPC_SyncBootDate), RpcTarget.All, PhotonNetwork.LocalPlayer.ActorNumber,
+            HolidayHatPlugin.ClientDate.Year, HolidayHatPlugin.ClientDate.Month, HolidayHatPlugin.ClientDate.Day );
     }
 
     [PunRPC]
@@ -106,6 +112,35 @@ public class HolidayHatHandler: MonoBehaviourPunCallbacks
             else
             {
 
+                HolidayHatPlugin.Log.LogError($"Can't update {p}'s hats!");
+            }
+        }
+        else
+        {
+            HolidayHatPlugin.Log.LogError($"Can't receive default hat index for player {actorNumber}!");
+        }
+    }
+    
+    [PunRPC]
+    public void RPC_SyncBootDate(int actorNumber, int year, int month, int day)
+    {
+        if (PhotonNetwork.TryGetPlayer(actorNumber, out var p))
+        {
+            HolidayHatPlugin.Log.LogInfo(
+                $"Received boot date for {p.NickName}");
+            
+            HolidayHatPlugin.UpdatePlayerBootDate(p, new DateTime(year, month, day));
+            
+            if (GameHandler.GetService<PersistentPlayerDataService>().GetPlayerData(p) is { } data)
+            {
+                if (PlayerHandler.GetPlayerCharacter(p) is { } c)
+                {
+                    HolidayHatPatcher.UpdateHolidayHat(c, data);
+                    HolidayHatPlugin.UpdatePlayerDummies(p);
+                }
+            }
+            else
+            {
                 HolidayHatPlugin.Log.LogError($"Can't update {p}'s hats!");
             }
         }
