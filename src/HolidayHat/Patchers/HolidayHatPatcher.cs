@@ -34,7 +34,7 @@ public static class HolidayHatPatcher
             // For petrified scouts
             hatsObject = baseHat.Find(@"Armature/Hip (RIGIDBODY)/Mid/AimJoint/Torso/Head/Hat");
         }
-        
+
         return hatsObject;
     }
 
@@ -65,12 +65,12 @@ public static class HolidayHatPatcher
     public static void PassportManagerAwakePostfix(PassportManager __instance)
     {
         HolidayHatPlugin.Log.LogInfo("INIT PASPORT");
-        
+
         HolidayHatPlugin.Log.LogDebug($"Adding Holiday Hat option...");
         var cal = new GregorianCalendar();
 
         var customization = __instance.GetComponent<Customization>();
-        
+
         CreateHatOption(customization, "Holiday_Hat", HolidayHatPlugin.HolidayHatIcon);
         HolidayHatPlugin.HolidayHatCosmeticIndex = customization.hats.Length - 1;
         // Add every custom hats
@@ -88,7 +88,7 @@ public static class HolidayHatPatcher
 
         HolidayHatPlugin.SetHatIndex(new DateTime(DateTime.Today.Year, 3, 17),
             customization.hats.Length - 1);
-        
+
         HolidayHatPlugin.SetHatLookup("StPatrickHat", customization.hats.Length - 1);
 
         CreateHatOption(customization, "FishHat", HolidayHatPlugin.FishHatIcon);
@@ -136,7 +136,7 @@ public static class HolidayHatPatcher
             customization.hats.Length - 1);
 
         HolidayHatPlugin.SetHatLookup("Ribbon", customization.hats.Length - 1);
-        
+
         HolidayHatPlugin.MaxHatIndex = customization.hats.Length - 1;
 
         // Updates the hat override index for the bundled fits
@@ -250,17 +250,20 @@ public static class HolidayHatPatcher
     public static void CharacterCustomizationPlayerDataChangedPostfix(CharacterCustomization __instance,
         PersistentPlayerData playerData)
     {
-
-        if (__instance._character.isBot && __instance.overridePhotonPlayer != null)
+        if (__instance.refs.PlayerRenderers[0] != null &&
+            __instance._character != null &&
+            !__instance._character.data.isScoutmaster)
         {
-            // Bot that mimics a player. Let's use their data instead
-            UpdateHolidayHat(__instance._character, playerData, __instance.overridePhotonPlayer);
+            if (__instance._character.isBot && __instance.overridePhotonPlayer != null)
+            {
+                // Bot that mimics a player. Let's use their data instead
+                UpdateHolidayHat(__instance._character, playerData, __instance.overridePhotonPlayer);
+            }
+            else
+            {
+                UpdateHolidayHat(__instance._character, playerData);
+            }
         }
-        else
-        {
-            UpdateHolidayHat(__instance._character, playerData);
-        }
-        
     }
 
     [HarmonyPatch(typeof(CharacterCustomization), nameof(CharacterCustomization.Awake))]
@@ -391,7 +394,7 @@ public static class HolidayHatPatcher
 
             var shoe = Singleton<Customization>.Instance.fits[playerData.customizationData.currentOutfit]
                 .fitMaterialShoes;
-            
+
             var hat = Singleton<Customization>.Instance.fits[playerData.customizationData.currentOutfit]
                 .fitHatMaterial;
 
@@ -463,7 +466,7 @@ public static class HolidayHatPatcher
                     "_Texture3",
                     "_Texture4",
                 ]);
-                
+
                 ms[1].SetColor("_Tint", shoe.GetColor("_Tint") * tintMult);
 
                 ms[1].SetTextureScale(CharacterCustomization.MainTex,
@@ -617,6 +620,7 @@ public static class HolidayHatPatcher
                         "_Texture4",
                     ]);
                 }
+
                 ms[0].SetTextureOffset(CharacterCustomization.MainTex, new Vector2(0,
                     hat.name.EndsWith("Castaway") ? 0.09f : 0));
             }
@@ -1017,7 +1021,7 @@ public static class HolidayHatPatcher
         {
             currentHat = HolidayHatPlugin.GetHatOrDefault(
                 pToUse);
-            
+
             HolidayHatPlugin.Log.LogDebug(
                 $"Showing hat @ {currentHat} on dummy...");
 
@@ -1042,21 +1046,20 @@ public static class HolidayHatPatcher
                 }
 
                 __instance.refs.playerHats[currentHat].SetMaterials([..pms]);
-            } 
+            }
 
             var customHatIndex = currentHat - HolidayHatPlugin.MinHatIndex;
-        
+
             var ms = __instance.refs.playerHats[currentHat].materials;
 
             for (var i = 0; i < ms.Length; i++)
             {
                 ms[i] = Object.Instantiate(ms[i]);
             }
-            
+
             SetHatMaterial(ms, playerData, HolidayHatPlugin.customHolidayHats[customHatIndex]);
-            
+
             __instance.refs.playerHats[currentHat].SetMaterials([..ms]);
-            
         }
     }
 
@@ -1166,6 +1169,27 @@ public static class HolidayHatPatcher
 
                 skinC = Color.HSVToRGB(skH, skS + skDiffS, skV + skDiffV);
             }
+            else
+            {
+                // When the color is monochromatic, use a lightly tinted version of the shifted color
+
+                var redC = Singleton<Customization>.Instance.skins[0].color;
+
+                var rlch = redC.ToOklch();
+                rlch.h += hueDeg;
+
+                var col = Oklab.Lerp(rlch.ToOklab(), lch.ToOklab(), 0.75f);
+
+                Color.RGBToHSV(col.ToColor(), out var h, out var s, out var v);
+                Color.RGBToHSV(skinC, out var skH, out var skS, out var skV);
+
+                // Add the differance in sat AND value
+
+                var skDiffS = (s - skS);
+                var skDiffV = (v - skV);
+
+                skinC = Color.HSVToRGB(h, skS + skDiffS, skV + skDiffV);
+            }
         }
 
         return skinC;
@@ -1175,7 +1199,7 @@ public static class HolidayHatPatcher
         Photon.Realtime.Player? player = null)
     {
         player ??= (newCharacter.view ?? newCharacter.photonView).Owner;
-        
+
         var fitIndex = CharacterCustomization.GetFitIndex(data);
 
         var currentHat = data.customizationData.currentHat;
@@ -1224,12 +1248,12 @@ public static class HolidayHatPatcher
             var skelCleanNamed = HolidayHatPlugin.CleanedName(skelMaterial.name);
 
             var customHatIndex = currentHat - HolidayHatPlugin.MinHatIndex;
-            
+
             SetHatMaterial(ms, data, HolidayHatPlugin.customHolidayHats[customHatIndex], isSkel);
 
             for (var i = 0; i < ms.Length; i++)
             {
-                var cleanName= HolidayHatPlugin.CleanedName(ms[i].name);
+                var cleanName = HolidayHatPlugin.CleanedName(ms[i].name);
 
                 if (cleanName == skelCleanNamed)
                 {
@@ -1255,14 +1279,15 @@ public static class HolidayHatPatcher
                             }
 
                             ms[i].SetColor("_BaseColor", boneTint.ToColor());
-                            
+
                             ms[i].SetFloat("_VertexGhost", 100f);
                         }
                     }
                     else
                     {
                         // Try getting the original mesh's material
-                        var ogM = Object.Instantiate(HolidayHatPlugin.customHolidayHats[customHatIndex].GetComponent<Renderer>()
+                        var ogM = Object.Instantiate(HolidayHatPlugin.customHolidayHats[customHatIndex]
+                            .GetComponent<Renderer>()
                             .materials[i]);
 
                         // copy only important parameters
@@ -1275,15 +1300,15 @@ public static class HolidayHatPatcher
                         // if there's a hue shift, we'll adjust the skin color's saturation and lightness to keep the perceptual difference of hus shifting the same
                         ms[i].SetColor(CharacterCustomization.SkinColor, AdaptSkinColor(colorToUse, ms[i]));
                     }
-                
-                } else if (ms[i].GetFloat(UseSkinTone) >= 1.0f)
+                }
+                else if (ms[i].GetFloat(UseSkinTone) >= 1.0f)
                 {
                     // Brand new skeleton colros
                     if (isSkel)
                     {
                         // Any skin-toned materials gets replaced with skeletal bones.
                         var s = Object.Instantiate(skelMaterial);
-                        
+
                         if (
                             ms[i].GetFloat(HueStr) > 0.0f &&
                             HolidayHatPlugin.CleanedName(ms[i].name) is not ("M_Fish" or "M_BunnyEars"))
@@ -1291,17 +1316,17 @@ public static class HolidayHatPatcher
                             var boneTint = s.GetColor("_BaseColor").ToOklch();
 
                             var oklchToUse = colorToUse.ToOklch();
-                            
+
                             boneTint.C = Mathf.Lerp(boneTint.C, oklchToUse.C, 0.125f);
-                            
+
                             if (!float.IsNaN(oklchToUse.h))
                             {
                                 boneTint.h = oklchToUse.h;
                             }
-                            
+
                             s.SetColor("_BaseColor", boneTint.ToColor());
                         }
-                        
+
                         var ogM = HolidayHatPlugin.customHolidayHats[customHatIndex].GetComponent<Renderer>()
                             .materials[i];
                         //
@@ -1312,18 +1337,19 @@ public static class HolidayHatPatcher
                                 "_HueShifts"
                             ],
                             [
-                                "_VertexGhost", 
+                                "_VertexGhost",
                                 "_HueStr"
                             ], []);
-                        
+
                         s.SetFloat("_VertexGhost", 100f);
-                        
+
                         ms[i] = s;
                     }
                     else
                     {
                         // Try getting the original mesh's material
-                        var ogM = Object.Instantiate(HolidayHatPlugin.customHolidayHats[customHatIndex].GetComponent<Renderer>()
+                        var ogM = Object.Instantiate(HolidayHatPlugin.customHolidayHats[customHatIndex]
+                            .GetComponent<Renderer>()
                             .materials[i]);
 
                         // copy only important parameters
@@ -1407,8 +1433,8 @@ public static class HolidayHatPatcher
 
             newHat.SetActive(false);
 
-             hoodies = __instance.refs.playerHats[^2..];
-             selectableHats = __instance.refs.playerHats[..^2];
+            hoodies = __instance.refs.playerHats[^2..];
+            selectableHats = __instance.refs.playerHats[..^2];
 
             __instance.refs.playerHats = selectableHats.AddToArray(meshRenderer).AddRangeToArray(hoodies);
 

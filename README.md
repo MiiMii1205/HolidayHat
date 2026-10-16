@@ -16,11 +16,10 @@ This option activates different hats based on a secular holiday calendar.
 
 For example, if the mod detects that today is Christmas (December 25th), then with the Holiday Hat active, your scout will wear a Santa hat.
 
-To calculate the current holiday, the mod uses the *host's game boot time* according to the host's local clock.
+To calculate the current holiday, the mod uses your own *boot time*.
 
-So if the host booted the game on December 25th (Christmas), then everyone in the room wearing the Holiday Hat will be
-wearing a Santa hat, even for players who join the game *after* the 25th. 
-The date is also locked down as long as the room stays active, even should the host quits.
+So if you booted the game on December 25th (Christmas), then you'll be wearing the Santa hat for everyone in the room.
+It also locks you to that date until you reboot the game, and won't change during a run.
 
 The mod supports several holidays, along with a few unique custom hats that appear on specific holidays.
 All custom hats are also available as separate hat options in the passport should you want to wear them normally. 
@@ -31,10 +30,10 @@ The mod comes with configuration options that allow you to configure how the "Ho
 
 - `Default Hat Index`: Holds the index of which hat to wear on normal days. Set it to the index of your favorite hat in the passport. (first hat starts at `0`). Can also be a modded hat as long as it's at the same spot in the passport for everyone.
 
-  If, for whatever reason, it points to the "Holiday Hat" option, it defaults to the scout cap.
+  If, for whatever reason, it points to the "Holiday Hat" option, it defaults to the scout cap. If the hat doesn't exist anymore (with a disabled hat mod for example) it will also default to 0.
 
 To change this setting, you'll need to run the mod first for it to generate the file, then use your mod manager to edit it.
-You can also use a mod like [ModConfig](https://thunderstore.io/c/peak/p/PEAKModding/ModConfig/) to change it in-game.
+You can also use a mod like [ModConfig](https://thunderstore.io/c/peak/p/PEAKModding/ModConfig/) to change it in-game.  
 
 ## Feedback ##
 
