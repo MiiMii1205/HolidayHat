@@ -222,14 +222,13 @@ public partial class HolidayHatPlugin : BaseUnityPlugin
     public static void SetHatIndex(DateTime date, int index)
     {
         var d = new DateTime(2000, date.Date.Month, date.Date.Day);
-        if (holidayDictionary.ContainsKey(d))
+        if (!holidayDictionary.TryAdd(d, index))
         {
             holidayDictionary[d] = index;
             Log.LogInfo($"Changed Hat idx [{index}] for {date:m}");
         }
         else
         {
-            holidayDictionary.Add(d, index);
             Log.LogInfo($"Inserted Hat idx [{index}] for {date:m}");
         }
     }
@@ -348,6 +347,16 @@ public partial class HolidayHatPlugin : BaseUnityPlugin
         var h = bundle.LoadAsset<GameObject>(hatName);
         Log.LogInfo($"Loaded Hat {hatName}!");
         ShaderExtensions.ReplaceShaders(h);
+
+        var hTransform = h.transform;
+        if (hTransform.childCount > 0)
+        {
+            for (int i = 0, length = hTransform.childCount; i < length; ++i)
+            {
+                ShaderExtensions.ReplaceShaders(hTransform.GetChild(i).gameObject);
+            }
+        }
+        
         return h;
     }
 
@@ -1356,7 +1365,7 @@ public partial class HolidayHatPlugin : BaseUnityPlugin
         var defHat = _defaultHatIndexes[player];
 
         return (defHat == HolidayHatCosmeticIndex || (defHat < 0 ||
-                                                      defHat > Singleton<Customization>.Instance.hats.Length))
+                                                      defHat >= Singleton<Customization>.Instance.hats.Length))
             ?
             // Default to 0 then
             0
@@ -1384,30 +1393,49 @@ public partial class HolidayHatPlugin : BaseUnityPlugin
     {
         var playerCharacter = PlayerHandler.GetPlayerCharacter(player);
 
-        var playerData = GameHandler.GetService<PersistentPlayerDataService>()
-            .GetPlayerData(player);
-
-        // Update zombies
-        foreach (var bot in Character.AllBotCharacters)
+        if (playerCharacter != null &&
+            playerCharacter.refs.customization is { } c)
         {
-            if (bot.refs.customization.overridePhotonPlayer != null &&
-                bot.refs.customization.overridePhotonPlayer.UserId == player.UserId)
+
+            if (GameHandler.GetService<PersistentPlayerDataService>()
+                    .GetPlayerData(player) is { } playerData)
             {
-                HolidayHatPatcher.UpdateHolidayHat(bot, playerData, bot.refs.customization.overridePhotonPlayer);
-                Log.LogDebug($"Updated hat for {bot} (copying {playerCharacter})");
+                // Update zombies
+                foreach (var bot in Character.AllBotCharacters)
+                {
+                    if (bot.refs.customization is {overridePhotonPlayer: not null} bc &&
+                        bc.overridePhotonPlayer.UserId == player.UserId)
+                    {
+                        HolidayHatPatcher.UpdateHolidayHat(bc, playerData, bc.overridePhotonPlayer);
+                        Log.LogDebug($"Updated hat for {bot} (copying {playerCharacter})");
+                    }
+                }
+
+                // Update petrified scout remains
+
+                foreach (var ps in FindObjectsByType<PetrifiedScout>(FindObjectsSortMode.None))
+                {
+                    if (ps.spawnedFromCharacter == playerCharacter)
+                    {
+                        ps.customization.UpdateDummy(player);
+                        Log.LogDebug($"Updated hat for {ps} (statue of {playerCharacter})");
+                    }
+                }
+            }
+            
+        }
+        else
+        {
+            if (playerCharacter == null)
+            {
+                Log.LogDebug($"{player.NickName}'s character doesn't exist yet.");
+            }
+            else
+            {
+                Log.LogError($"Can't update {player.NickName}'s hats!");
             }
         }
-
-        // Update petrified scout remains
-
-        foreach (var ps in FindObjectsByType<PetrifiedScout>(FindObjectsSortMode.None))
-        {
-            if (ps.spawnedFromCharacter == playerCharacter)
-            {
-                ps.customization.UpdateDummy(player);
-                Log.LogDebug($"Updated hat for {ps} (statue of {playerCharacter})");
-            }
-        }
+        
     }
 
 

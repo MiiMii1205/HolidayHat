@@ -12,6 +12,7 @@ using Peak;
 using Peak.Network;
 using PEAKLib.Core.Extensions;
 using Photon.Pun;
+using pworld.Scripts.Extensions;
 using UnityEngine;
 using Zorro.Core;
 using Object = UnityEngine.Object;
@@ -227,7 +228,7 @@ public static class HolidayHatPatcher
         // the character who climbs the helicopter
         if (!syncHats(__instance.firstCutsceneScout))
             HolidayHatPlugin.Log.LogError($"Something went wrong [firstCutsceneScout]...");
-
+    
         // the characters who sit down
         for (int i = 0; i < __instance.cutsceneScoutRefs.Count(); i++)
         {
@@ -235,7 +236,7 @@ public static class HolidayHatPatcher
                 HolidayHatPlugin.Log.LogError(
                     $"Something went wrong [cutsceneScoutRefs-{i}]...");
         }
-
+    
         // True ending characters
         for (int i = 0; i < __instance.finalCutsceneScoutRefs.Count(); i++)
         {
@@ -250,19 +251,28 @@ public static class HolidayHatPatcher
     public static void CharacterCustomizationPlayerDataChangedPostfix(CharacterCustomization __instance,
         PersistentPlayerData playerData)
     {
-        if (__instance.refs.PlayerRenderers[0] != null &&
-            __instance._character != null &&
-            !__instance._character.data.isScoutmaster)
+        if (__instance.refs.PlayerRenderers[0] != null)
         {
             if (__instance._character.isBot && __instance.overridePhotonPlayer != null)
             {
+                HolidayHatPlugin.Log.LogDebug(
+                    $"Received character changes for Bot copy of {__instance.overridePhotonPlayer.NickName}");
+
                 // Bot that mimics a player. Let's use their data instead
-                UpdateHolidayHat(__instance._character, playerData, __instance.overridePhotonPlayer);
-            }
-            else
+                UpdateHolidayHat(__instance, playerData, __instance.overridePhotonPlayer);
+            } else if (!__instance._character.data.isScoutmaster && 
+                !__instance.ignorePlayerCosmetics)
             {
-                UpdateHolidayHat(__instance._character, playerData);
+                HolidayHatPlugin.Log.LogDebug(
+                    $"Received character changes for {__instance.view.Owner.NickName}");
+
+                UpdateHolidayHat(__instance, playerData, __instance.view.Owner);
+
             }
+        } else {
+            
+                HolidayHatPlugin.Log.LogWarning(
+                    $"Can't receive changes for player {__instance.view.Owner}. No renderers are present.");
         }
     }
 
@@ -276,14 +286,22 @@ public static class HolidayHatPatcher
         // Inserting the Holiday Hat placeholder right now
         var hoodies = __instance.refs.playerHats[^2..];
         var selectableHats = __instance.refs.playerHats[..^2];
+        
+        var cloned = Object.Instantiate(selectableHats[0].gameObject, selectableHats[0].transform.parent, false);
 
-        __instance.refs.playerHats = selectableHats.AddToArray(selectableHats[0]).AddRangeToArray(hoodies);
+        cloned.transform.SetLocalPositionAndRotation(selectableHats[0].transform.localPosition,
+            selectableHats[0].transform.localRotation);
 
-        HolidayHatPlugin.Log.LogInfo($"Inserted Placeholder Hat @ {selectableHats.Length + 1}!");
+        __instance.refs.playerHats =
+            selectableHats.AddToArray(cloned.GetComponent<Renderer>()).AddRangeToArray(hoodies);
+
+        HolidayHatPlugin.Log.LogInfo($"Inserted Placeholder Hat @ {selectableHats.Length + 1} for {__instance._character.characterName}!");
 
         for (var i = 0; i < HolidayHatPlugin.customHolidayHats.Count; i++)
         {
-            var newHat = Object.Instantiate(HolidayHatPlugin.customHolidayHats[i], hatsObject, true);
+            var hat = HolidayHatPlugin.customHolidayHats[i];
+            
+            var newHat = Object.Instantiate(hat, hatsObject, true);
             SetLayerRecursively(newHat.transform, hatsObject.gameObject.layer);
 
             var meshRenderer = newHat.GetComponent<MeshRenderer>();
@@ -299,11 +317,11 @@ public static class HolidayHatPatcher
 
             meshRenderer.SetMaterials([..mats]);
 
-            HolidayHatPlugin.Log.LogDebug($"Adding Hat {newHat.name}...");
+            HolidayHatPlugin.Log.LogDebug($"Adding Hat {newHat.name} for {__instance._character.characterName}...");
 
-            newHat.transform.localPosition = HolidayHatPlugin.customHolidayHats[i].transform.position;
-            newHat.transform.localRotation = HolidayHatPlugin.customHolidayHats[i].transform.rotation;
-            newHat.transform.localScale = HolidayHatPlugin.customHolidayHats[i].transform.localScale;
+            newHat.transform.localPosition = hat.transform.position;
+            newHat.transform.localRotation = hat.transform.rotation;
+            newHat.transform.localScale = hat.transform.localScale;
 
             newHat.SetActive(false);
 
@@ -312,63 +330,13 @@ public static class HolidayHatPatcher
 
             __instance.refs.playerHats = selectableHats.AddToArray(meshRenderer).AddRangeToArray(hoodies);
 
-            HolidayHatPlugin.Log.LogInfo($"Inserted Holiday Hat {newHat.name} @ {selectableHats.Length + 1}!");
+            HolidayHatPlugin.Log.LogInfo($"Inserted Holiday Hat {newHat.name} @ {selectableHats.Length + 1} for {__instance._character.characterName}!");
         }
 
-        // if (HolidayHatPlugin.CurrentHolidayHatPrefab is not { } hatPrefab)
-        // {
-        //     /*
-        //      * If there's no holiday hat today, we STILL need to fill in a placeholder hat to keep cosmetics offset in check
-        //      * But that's ok because we're going to override it later anyway
-        //      */
-        //     
-        //     var hoodies = __instance.refs.playerHats[^2..];
-        //     var selectableHats = __instance.refs.playerHats[..^2];
-        //     
-        //     __instance.refs.playerHats = selectableHats.AddToArray(selectableHats[0]).AddRangeToArray(hoodies);
-        //     
-        //     HolidayHatPlugin.Log.LogInfo($"Inserted Placeholder Hat @ {selectableHats.Length + 1}!");
-        // }
-        // else
-        // {
-        //     // There's only one custom hat right now and it's the holiday hat option
-        //     var newHat = Object.Instantiate(hatPrefab, hatsObject, true);
-        //     SetLayerRecursively(newHat.transform, hatsObject.gameObject.layer);
-        //     
-        //     var meshRenderer = newHat.GetComponent<MeshRenderer>();
-        //     
-        //     // meshRenderer.material.shader = meshRenderer.sharedMaterial.shader = Shader.Find("W/Character");
-        //     
-        //     var mats = meshRenderer.materials;
-        //     
-        //     for (int index = 0, length = mats.Length; index < length; ++index)
-        //     {
-        //         mats[index].shader = Shader.Find(mats[index].shader.name);
-        //         // Materials shouldn't interact with each others
-        //         mats[index] = Object.Instantiate(mats[index]);
-        //     }
-        //     
-        //     meshRenderer.SetMaterials([..mats]);
-        //     
-        //     HolidayHatPlugin.Log.LogDebug($"Adding Holiday Hat {newHat.name}...");
-        //     
-        //     newHat.transform.localPosition = hatPrefab.transform.position;
-        //     newHat.transform.localRotation = hatPrefab.transform.rotation;
-        //     newHat.transform.localScale = hatPrefab.transform.localScale;
-        //     
-        //     newHat.SetActive(false);
-        //     
-        //     var hoodies = __instance.refs.playerHats[^2..];
-        //     var selectableHats = __instance.refs.playerHats[..^2];
-        //     
-        //     __instance.refs.playerHats = selectableHats.AddToArray(meshRenderer).AddRangeToArray(hoodies);
-        //     
-        //     HolidayHatPlugin.Log.LogInfo($"Inserted Holiday Hat {newHat.name} @ {selectableHats.Length + 1}!");
-        // }
     }
 
     private static void SetHatMaterial(Material[] ms, PersistentPlayerData playerData, GameObject hatP,
-        bool isSkel = false)
+        bool isSkel = false, bool isLocal = false)
     {
         if (hatP.name.StartsWith("Bunny"))
         {
@@ -386,8 +354,17 @@ public static class HolidayHatPatcher
                 HolidayHatPlugin.Log.LogDebug("Showing bunny nose!");
                 ms[0] = ms[2];
             }
-        }
 
+            if (isLocal)
+            {
+                // Hide those pesky cosmetics
+                ms[0].SetFloat("_VertexGhost", 100f);
+                ms[1].SetFloat("_VertexGhost", 100f);
+                ms[2].SetFloat("_VertexGhost", 100f);
+            }
+            
+        }
+        
         else if (hatP.name.StartsWith("Pilgrim"))
         {
             // Change the pilgrim material based on the current fit.
@@ -1010,14 +987,8 @@ public static class HolidayHatPatcher
         {
             currentHat = Singleton<Customization>.Instance.fits[fitIndex].overrideHatIndex;
         }
-
-        if (currentHat == 0)
-        {
-            // Because playerHats has a dupe of the cap, it got disabled by not wearing the holiday hat... Let's re-enable it manually then
-            __instance.refs.playerHats[0].gameObject
-                .SetActive(true);
-        }
-        else if (currentHat == HolidayHatPlugin.HolidayHatCosmeticIndex)
+        
+        if (currentHat == HolidayHatPlugin.HolidayHatCosmeticIndex)
         {
             currentHat = HolidayHatPlugin.GetHatOrDefault(
                 pToUse);
@@ -1057,7 +1028,15 @@ public static class HolidayHatPatcher
                 ms[i] = Object.Instantiate(ms[i]);
             }
 
-            SetHatMaterial(ms, playerData, HolidayHatPlugin.customHolidayHats[customHatIndex]);
+            SetHatMaterial(ms, playerData, HolidayHatPlugin.customHolidayHats[customHatIndex], false, false);
+
+            if (HolidayHatPlugin.customHolidayHats[customHatIndex].name.StartsWith("Fish"))
+            {
+                // Deactivate fish bone rendering
+                __instance.refs.playerHats[currentHat].enabled = true;
+                __instance.refs.playerHats[currentHat].transform.GetChild(0).gameObject.SetActive(false);
+                
+            }
 
             __instance.refs.playerHats[currentHat].SetMaterials([..ms]);
         }
@@ -1098,19 +1077,9 @@ public static class HolidayHatPatcher
     [HarmonyPostfix]
     public static void GameUtilsAwakePost(GameHandler __instance)
     {
-        __instance.gameObject.AddComponent<HolidayHatHandler>();
+        __instance.gameObject.GetOrAddComponent<HolidayHatHandler>();
     }
-
-    [HarmonyPatch(typeof(PersistentPlayerDataService), nameof(PersistentPlayerDataService.OnCharacterRegistered))]
-    [HarmonyPostfix]
-    public static void PersistentPlayerDataServiceConstructorPostfix(PersistentPlayerDataService __instance,
-        Character newCharacter)
-    {
-        // //Register holiday hat character update
-        // __instance.SubscribeToPlayerDataChange(newCharacter.photonView.Owner,
-        //     (obj) => { UpdateHolidayHat(newCharacter, obj); });
-    }
-
+ 
     [HarmonyPatch(typeof(CustomizationRefs), nameof(CustomizationRefs.SetSkeleton))]
     [HarmonyPostfix]
     public static void SetSkelPost(CustomizationRefs __instance, bool active, bool isLocal)
@@ -1123,7 +1092,8 @@ public static class HolidayHatPatcher
 
             HolidayHatPlugin.Log.LogInfo(
                 $"Player {pToUse} turned {(active ? "into a skeleton" : "human")}. Updating holiday hat.");
-            UpdateHolidayHat(__instance.customization._character, playerData);
+            
+            UpdateHolidayHat(__instance.customization, playerData, pToUse);
         }
     }
 
@@ -1195,61 +1165,99 @@ public static class HolidayHatPatcher
         return skinC;
     }
 
-    public static void UpdateHolidayHat(Character newCharacter, PersistentPlayerData data,
+    public static void UpdateHolidayHat(CharacterCustomization c, PersistentPlayerData data,
         Photon.Realtime.Player? player = null)
     {
-        player ??= (newCharacter.view ?? newCharacter.photonView).Owner;
+        player ??= (c.view ?? c._character.photonView).Owner;
+        
+        HolidayHatPlugin.Log.LogDebug(
+            $"Start Hat Update {player.NickName}: {data.customizationData.ToString()}");
 
         var fitIndex = CharacterCustomization.GetFitIndex(data);
 
         var currentHat = data.customizationData.currentHat;
+        
         if (Singleton<Customization>.Instance.fits[fitIndex].overrideHat)
         {
             currentHat = Singleton<Customization>.Instance.fits[fitIndex].overrideHatIndex;
         }
 
-        if (currentHat == 0)
-        {
-            // Because playerHats has a dupe of the cap, it got disabled by not wearing the holiday hat... Let's re-enable it manually then
-            newCharacter.refs.customization.refs.playerHats[0].gameObject
-                .SetActive(true);
-        }
-        else if (currentHat == HolidayHatPlugin.HolidayHatCosmeticIndex)
+        MeshFilter? mshf = null;
+        
+        if (currentHat == HolidayHatPlugin.HolidayHatCosmeticIndex)
         {
             currentHat = HolidayHatPlugin.GetHatOrDefault(
                 player);
 
-            for (int index1 = 0; index1 < newCharacter.refs.customization.refs.playerHats.Length; ++index1)
+            for (int index1 = 0; index1 < c.refs.playerHats.Length; ++index1)
             {
-                newCharacter.refs.customization.refs.playerHats[index1].gameObject
+                c.refs.playerHats[index1].gameObject
                     .SetActive(currentHat == index1);
 
                 if (currentHat == index1)
                 {
+                    mshf = c.refs.playerHats[index1].GetComponent<MeshFilter>();
+                    
                     HolidayHatPlugin.Log.LogDebug(
-                        $"Showing hat {newCharacter.refs.customization.refs.playerHats[index1].name}...");
+                        $"Showing hat {c.refs.playerHats[index1].name}...");
                 }
+            }
+
+            if (!(currentHat >= HolidayHatPlugin.MinHatIndex && currentHat <= HolidayHatPlugin.MaxHatIndex))
+            {
+                UpdateHatShadow(mshf ?? c.refs.playerHats[currentHat].GetComponent<MeshFilter>(), c);
+                RefreshHolidayHatHide(c.refs.playerHats[currentHat].GetComponent<Renderer>(), c._character);
             }
         }
 
         if (currentHat >= HolidayHatPlugin.MinHatIndex && currentHat <= HolidayHatPlugin.MaxHatIndex)
         {
-            var isSkel = newCharacter.data.isSkeleton;
+            var isSkel = false;
+            
+            if (c._character)
+            {
+                isSkel=c._character.data.isSkeleton;
+            }
 
             // Only custom hats have possible skin colors
 
-            var ms = newCharacter.refs.customization.refs.playerHats[currentHat]
+            var ms = c.refs.playerHats[currentHat]
                 .materials;
 
-            var colorToUse = newCharacter
-                .refs.customization.PlayerColor;
+            var colorToUse = c.PlayerColor;
 
-            var skelMaterial = newCharacter.refs.customization.refs.skeletonRenderer.material;
+            var skelMaterial = c.refs.skeletonRenderer.material;
             var skelCleanNamed = HolidayHatPlugin.CleanedName(skelMaterial.name);
 
             var customHatIndex = currentHat - HolidayHatPlugin.MinHatIndex;
 
-            SetHatMaterial(ms, data, HolidayHatPlugin.customHolidayHats[customHatIndex], isSkel);
+            var fishSkel = false;
+
+            if (HolidayHatPlugin.customHolidayHats[customHatIndex].name.StartsWith("Fish"))
+            {
+                var bones = c.refs.playerHats[currentHat]
+                    .transform.GetChild(0).gameObject;
+
+                if (isSkel)
+                {
+                    // Deactivate the fish hat and activate the fish bone
+                    c.refs.playerHats[currentHat].enabled = false;
+
+                    bones.gameObject.SetActive(true);
+
+                    ms = bones.GetComponent<Renderer>().materials;
+                    
+                    fishSkel = true;
+                    
+                }
+                else
+                {
+                    c.refs.playerHats[currentHat].enabled = true;
+                    bones.gameObject.SetActive(false);
+                }
+            }
+            
+            SetHatMaterial(ms, data, HolidayHatPlugin.customHolidayHats[customHatIndex], isSkel, player.IsLocal);
 
             for (var i = 0; i < ms.Length; i++)
             {
@@ -1280,15 +1288,17 @@ public static class HolidayHatPatcher
 
                             ms[i].SetColor("_BaseColor", boneTint.ToColor());
 
-                            ms[i].SetFloat("_VertexGhost", 100f);
                         }
+                        
                     }
                     else
                     {
                         // Try getting the original mesh's material
-                        var ogM = Object.Instantiate(HolidayHatPlugin.customHolidayHats[customHatIndex]
+                        var ogM = Object.Instantiate(
+                            (fishSkel ? HolidayHatPlugin.customHolidayHats[customHatIndex].transform.GetChild(0).gameObject  : HolidayHatPlugin.customHolidayHats[customHatIndex] )
                             .GetComponent<Renderer>()
-                            .materials[i]);
+                            .materials[i]
+                            );
 
                         // copy only important parameters
 
@@ -1327,7 +1337,9 @@ public static class HolidayHatPatcher
                             s.SetColor("_BaseColor", boneTint.ToColor());
                         }
 
-                        var ogM = HolidayHatPlugin.customHolidayHats[customHatIndex].GetComponent<Renderer>()
+                        var ogM = (fishSkel
+                                ? HolidayHatPlugin.customHolidayHats[customHatIndex].transform.GetChild(0).gameObject
+                                : HolidayHatPlugin.customHolidayHats[customHatIndex]).GetComponent<Renderer>()
                             .materials[i];
                         //
                         // ogM.CopyPropsListFromMaterial(ms[i], ["_HeightMaskSmoothness"],
@@ -1341,14 +1353,15 @@ public static class HolidayHatPatcher
                                 "_HueStr"
                             ], []);
 
-                        s.SetFloat("_VertexGhost", 100f);
-
                         ms[i] = s;
                     }
                     else
                     {
                         // Try getting the original mesh's material
-                        var ogM = Object.Instantiate(HolidayHatPlugin.customHolidayHats[customHatIndex]
+                        var ogM = Object.Instantiate(
+                            (fishSkel
+                                ? HolidayHatPlugin.customHolidayHats[customHatIndex].transform.GetChild(0).gameObject
+                                : HolidayHatPlugin.customHolidayHats[customHatIndex])
                             .GetComponent<Renderer>()
                             .materials[i]);
 
@@ -1365,8 +1378,66 @@ public static class HolidayHatPatcher
                 }
             }
 
-            newCharacter.refs.customization.refs.playerHats[currentHat]
-                .SetMaterials([..ms]);
+            if (fishSkel)
+            {
+                c.refs.playerHats[currentHat].transform.GetChild(0).GetComponent<Renderer>()
+                    .SetMaterials([..ms]);
+                
+                RefreshHolidayHatHide(c.refs.playerHats[currentHat].transform.GetChild(0)
+                    .GetComponent<Renderer>(), c._character, 0f, 100f);
+                
+                UpdateHatShadow(c.refs.playerHats[currentHat].transform.GetChild(0)
+                        .GetComponent<MeshFilter>(),
+                    c,
+                    c.refs.playerHats[currentHat].transform);
+            }
+            else
+            {
+                c.refs.playerHats[currentHat]
+                    .SetMaterials([..ms]);
+                
+                RefreshHolidayHatHide(c.refs.playerHats[currentHat], c._character, 0f,
+                    (HolidayHatPlugin.customHolidayHats[customHatIndex].name.StartsWith("Bunny") ||
+                     HolidayHatPlugin.customHolidayHats[customHatIndex].name.StartsWith("Fish")) ? 100f : 1f);
+
+
+                UpdateHatShadow(c.refs.playerHats[currentHat].GetComponent<MeshFilter>(),
+                    c);
+            }
+        }
+
+        HolidayHatPlugin.Log.LogDebug(
+            $"Completed Hat Update {player.NickName}: {data.customizationData.ToString()}");
+    }
+
+    private static void RefreshHolidayHatHide(Renderer r, Character? character, float showOn = 0f, float showOff = 1f)
+    {
+        if (character && character.refs.hideTheBody)
+        {
+            character.refs.hideTheBody.SetShowing(r, character.refs.hideTheBody.isShowing ? showOn : showOff);
+        }
+    }
+    
+    private static void UpdateHatShadow(MeshFilter filter, CharacterCustomization? c, Transform? tToUse = null)
+    {
+        if (c && c.refs.hatShadowMeshFilter)
+        {
+            var toUse = (tToUse ?? filter.transform);
+            
+            c.refs.hatShadowMeshFilter.sharedMesh = filter.sharedMesh;
+            c.refs.hatShadowMeshFilter.transform.SetPositionAndRotation(toUse.position,
+                toUse.rotation);
+            c.refs.hatShadowMeshFilter.transform.localScale = toUse.localScale;
+
+            var r = c.refs.hatShadowMeshFilter.GetComponent<Renderer>();
+            var m = new List<Material>();
+            
+            for (var i = 0; i < filter.sharedMesh.subMeshCount; i++)
+            {
+                m.Add(r.material);
+            }
+            
+            r.SetMaterials(m);
         }
     }
 
@@ -1390,55 +1461,59 @@ public static class HolidayHatPatcher
     [HarmonyBefore("MoreCustomizations")]
     public static void PlayerCustomizationDummyUpdateDummyPrefix(PlayerCustomizationDummy __instance)
     {
-        if (__instance == lastModifiedDummy)
+        if (__instance != lastModifiedDummy)
         {
-            return;
-        }
+            lastModifiedDummy = __instance;
 
-        lastModifiedDummy = __instance;
+            var hatsObject = GetHatObject(__instance.refs.transform);
 
-        var hatsObject = GetHatObject(__instance.refs.transform);
+            // Inserting the Holiday Hat placeholder right now
+            var hoodies = __instance.refs.playerHats[^2..];
+            var selectableHats = __instance.refs.playerHats[..^2];
 
-        // Inserting the Holiday Hat placeholder right now
-        var hoodies = __instance.refs.playerHats[^2..];
-        var selectableHats = __instance.refs.playerHats[..^2];
+            var cloned = Object.Instantiate(selectableHats[0].gameObject, selectableHats[0].transform.parent, false);
 
-        __instance.refs.playerHats = selectableHats.AddToArray(selectableHats[0]).AddRangeToArray(hoodies);
+            cloned.transform.SetLocalPositionAndRotation(selectableHats[0].transform.localPosition,
+                selectableHats[0].transform.localRotation);
 
-        HolidayHatPlugin.Log.LogInfo($"Inserted Placeholder Hat @ {selectableHats.Length + 1}!");
+            __instance.refs.playerHats =
+                selectableHats.AddToArray(cloned.GetComponent<Renderer>()).AddRangeToArray(hoodies);
 
-        for (var i = 0; i < HolidayHatPlugin.customHolidayHats.Count; i++)
-        {
-            var newHat = Object.Instantiate(HolidayHatPlugin.customHolidayHats[i], hatsObject, true);
-            SetLayerRecursively(newHat.transform, hatsObject.gameObject.layer);
+            HolidayHatPlugin.Log.LogInfo($"Inserted Placeholder Hat @ {selectableHats.Length + 1}! (dummy)");
 
-            var meshRenderer = newHat.GetComponent<MeshRenderer>();
-
-            var mats = meshRenderer.materials;
-
-            for (int index = 0, length = mats.Length; index < length; ++index)
+            for (var i = 0; i < HolidayHatPlugin.customHolidayHats.Count; i++)
             {
-                mats[index].shader = Shader.Find(mats[index].shader.name);
-                // Materials shouldn't interact with each others
-                mats[index] = Object.Instantiate(mats[index]);
+                var newHat = Object.Instantiate(HolidayHatPlugin.customHolidayHats[i], hatsObject, true);
+                SetLayerRecursively(newHat.transform, hatsObject.gameObject.layer);
+
+                var meshRenderer = newHat.GetComponent<MeshRenderer>();
+
+                var mats = meshRenderer.materials;
+
+                for (int index = 0, length = mats.Length; index < length; ++index)
+                {
+                    mats[index].shader = Shader.Find(mats[index].shader.name);
+                    // Materials shouldn't interact with each others
+                    mats[index] = Object.Instantiate(mats[index]);
+                }
+
+                meshRenderer.SetMaterials([..mats]);
+
+                HolidayHatPlugin.Log.LogDebug($"Adding Hat {newHat.name} for Dummy...");
+
+                newHat.transform.localPosition = HolidayHatPlugin.customHolidayHats[i].transform.position;
+                newHat.transform.localRotation = HolidayHatPlugin.customHolidayHats[i].transform.rotation;
+                newHat.transform.localScale = HolidayHatPlugin.customHolidayHats[i].transform.localScale;
+
+                newHat.SetActive(false);
+
+                hoodies = __instance.refs.playerHats[^2..];
+                selectableHats = __instance.refs.playerHats[..^2];
+
+                __instance.refs.playerHats = selectableHats.AddToArray(meshRenderer).AddRangeToArray(hoodies);
+
+                HolidayHatPlugin.Log.LogInfo($"Inserted Hat {newHat.name} @ {selectableHats.Length + 1} for Dummy!");
             }
-
-            meshRenderer.SetMaterials([..mats]);
-
-            HolidayHatPlugin.Log.LogDebug($"Adding Hat {newHat.name}...");
-
-            newHat.transform.localPosition = HolidayHatPlugin.customHolidayHats[i].transform.position;
-            newHat.transform.localRotation = HolidayHatPlugin.customHolidayHats[i].transform.rotation;
-            newHat.transform.localScale = HolidayHatPlugin.customHolidayHats[i].transform.localScale;
-
-            newHat.SetActive(false);
-
-            hoodies = __instance.refs.playerHats[^2..];
-            selectableHats = __instance.refs.playerHats[..^2];
-
-            __instance.refs.playerHats = selectableHats.AddToArray(meshRenderer).AddRangeToArray(hoodies);
-
-            HolidayHatPlugin.Log.LogInfo($"Inserted Hat {newHat.name} @ {selectableHats.Length + 1}!");
         }
     }
 }

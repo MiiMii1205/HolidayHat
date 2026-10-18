@@ -32,6 +32,9 @@ public class HolidayHatHandler: MonoBehaviourPunCallbacks
                 RpcTarget.All,
                 (HolidayHatPlugin.RoomDate ?? HolidayHatPlugin.ClientDate).Ticks);
         }
+
+        photonView.RPC(nameof(RPC_SyncDefaultHat), RpcTarget.All, PhotonNetwork.LocalPlayer.ActorNumber,
+            HolidayHatPlugin.DefaultPlayerHatIndex.Value);
     }
     private void OnDestroy()
     {
@@ -77,7 +80,6 @@ public class HolidayHatHandler: MonoBehaviourPunCallbacks
         
         HolidayHatPlugin.Log.LogInfo($"Sending our boot date to other players");
         
-
         photonView.RPC(nameof(RPC_SyncBootDate), RpcTarget.All, PhotonNetwork.LocalPlayer.ActorNumber,
             HolidayHatPlugin.ClientDate.Year, HolidayHatPlugin.ClientDate.Month, HolidayHatPlugin.ClientDate.Day );
     }
@@ -100,24 +102,48 @@ public class HolidayHatHandler: MonoBehaviourPunCallbacks
                 $"Received default hat idx ({defaultHatIndex}) for {p.NickName}!");
             
             HolidayHatPlugin.UpdatePlayerDefaultHatIndex(p, defaultHatIndex);
-            
-            if (GameHandler.GetService<PersistentPlayerDataService>().GetPlayerData(p) is { } data)
-            {
-                if (PlayerHandler.GetPlayerCharacter(p) is { } c)
-                {
-                    HolidayHatPatcher.UpdateHolidayHat(c, data);
-                    HolidayHatPlugin.UpdatePlayerDummies(p);
-                }
-            }
-            else
-            {
-
-                HolidayHatPlugin.Log.LogError($"Can't update {p}'s hats!");
-            }
+            RefreshHolidayHats(p, $"because we received {p.NickName}'s new default hat :{defaultHatIndex}");
         }
         else
         {
             HolidayHatPlugin.Log.LogError($"Can't receive default hat index for player {actorNumber}!");
+        }
+    }
+
+    private static void RefreshHolidayHats(Photon.Realtime.Player p, string reason = "")
+    {
+        var ch = PlayerHandler.GetPlayerCharacter(p);
+
+        if (ch != null &&
+            ch.refs.customization is { } c
+           )
+        {
+            if (
+                GameHandler.GetService<PersistentPlayerDataService>().GetPlayerData(p) is { } data && 
+                data.customizationData.currentHat == HolidayHatPlugin.HolidayHatCosmeticIndex)
+            {
+                HolidayHatPlugin.Log.LogDebug(
+                    $"Updating character {ch.characterName}'s hats {reason}...");
+
+                HolidayHatPatcher.UpdateHolidayHat(c, data, p);
+                HolidayHatPlugin.UpdatePlayerDummies(p);
+            }
+            else
+            {
+                HolidayHatPlugin.Log.LogInfo(
+                    $"{p} is not wearing the Holiday Hat. No need to update...");
+            }
+        }
+        else
+        {
+            if (ch == null)
+            {
+                HolidayHatPlugin.Log.LogDebug($"{p.NickName}'s character doesn't exist yet.");
+            }
+            else
+            {
+                HolidayHatPlugin.Log.LogError($"Can't update {p.NickName}'s hats!");
+            }
         }
     }
     
@@ -130,23 +156,11 @@ public class HolidayHatHandler: MonoBehaviourPunCallbacks
                 $"Received boot date for {p.NickName}");
             
             HolidayHatPlugin.UpdatePlayerBootDate(p, new DateTime(year, month, day));
-            
-            if (GameHandler.GetService<PersistentPlayerDataService>().GetPlayerData(p) is { } data)
-            {
-                if (PlayerHandler.GetPlayerCharacter(p) is { } c)
-                {
-                    HolidayHatPatcher.UpdateHolidayHat(c, data);
-                    HolidayHatPlugin.UpdatePlayerDummies(p);
-                }
-            }
-            else
-            {
-                HolidayHatPlugin.Log.LogError($"Can't update {p}'s hats!");
-            }
+            RefreshHolidayHats(p, $"because we received {p.NickName}'s boot date :{new DateTime(year, month, day)}");
         }
         else
         {
-            HolidayHatPlugin.Log.LogError($"Can't receive default hat index for player {actorNumber}!");
+            HolidayHatPlugin.Log.LogError($"Player {actorNumber} doesn't exists.");
         }
     }
 }
