@@ -7,8 +7,8 @@ repository = "https://thunderstore.io"
 [package]
 namespace = "OracleTeam"
 name = "HolidayHat"
-description = "Adds a hat option that activates different hats based on secular holidays."
-websiteUrl = "" # TODO: Add a link to your mod repository here (optional)
+description = "Adds a dynamic hat that changes based on holidays (+Custom holiday-themed hats)."
+websiteUrl = "https://github.com/MiiMii1205/HolidayHat"
 containsNsfwContent = false
 
 [package.dependencies]
