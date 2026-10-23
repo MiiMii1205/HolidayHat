@@ -6,7 +6,10 @@
 [![GitHub Licences](https://img.shields.io/github/license/MiiMii1205/HolidayHat?style=for-the-badge)](https://github.com/MiiMii1205/HolidayHat)
 [![GitHub Issues](https://img.shields.io/github/issues-raw/MiiMii1205/HolidayHat?style=for-the-badge)](https://github.com/MiiMii1205/HolidayHat/issues/new)
 
-A dynamic hat that changes based on holidays
+A dynamic hat that changes based on holidays.
+
+_Compatible with [Mimic](https://thunderstore.io/c/peak/p/EMOKaMi/Mimic/), [SkinColorSliders](https://thunderstore.io/c/peak/p/Snosz/SkinColorSliders/) and [More Customizations
+](https://thunderstore.io/c/peak/p/cretapark/More_Customizations/)_
 
 ## How it works ##
 
