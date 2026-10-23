@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Runtime.CompilerServices;
 using UnityEngine;
 
 namespace HolidayHat.Utilities;
@@ -87,11 +88,16 @@ public static class Oklab
             -0.0041960863f * l - 0.7034186147f * m + 1.7076147010f * s
         );
     }
+
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Color ToColor(this LCH c)
     {
         return c.ToOklab().ToColor();
     }
 
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Lab Lerp(Lab a, Lab b, float f)
     {
         return new Lab
@@ -101,6 +107,8 @@ public static class Oklab
             b = Mathf.Lerp(a.b, b.b, f)
         };
     }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Vector2 ToVec(this Lab a)
     {
         return new Vector2
@@ -110,6 +118,7 @@ public static class Oklab
         };
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Color OklabLerp(Color a, Color b, float f)
     {
         return Lerp(a.ToOklab(), b.ToOklab(), f).ToColor();
@@ -188,6 +197,8 @@ public static class Oklab
         return r.ToColor();
     }
 
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static float NormalizeHue(float hue)
     {
         if (float.IsNaN(hue))

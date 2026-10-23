@@ -2,6 +2,8 @@
 using HolidayHat.Patchers;
 using PEAKLib.Core;
 using SkinColorSliders;
+using UnityEngine;
+using Zorro.Core;
 
 namespace HolidayHat.Compatibility;
 
@@ -31,7 +33,8 @@ public static class SkinColorSlidersCompatibility
 
         var face = dummyColors.colors[SkinColorManager.SkinPart.Face];
 
-        for (var i = HolidayHatPlugin.MinHatIndex; i < HolidayHatPlugin.MaxHatIndex && i < pcd.refs.playerHats.Length; i++)
+        for (int i = HolidayHatPlugin.MinHatIndex, length= pcd.refs.playerHats.Length; i < HolidayHatPlugin.MaxHatIndex && i <
+             length; ++i)
         {
             var ms = pcd.refs.playerHats[i].materials;
 
@@ -42,6 +45,26 @@ public static class SkinColorSlidersCompatibility
             }
 
             pcd.refs.playerHats[i].SetMaterials([..ms]);
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.NoOptimization)]
+    public static Color GetPlayerSkinColor(PersistentPlayerData data, Photon.Realtime.Player player)
+    {
+        HolidayHatPlugin.Log.LogDebug($"Fetching {player.NickName}'s face color..");
+        var color = SkinColorManager.GetColor(player.ActorNumber,
+            SkinColorManager.SkinPart.Face);
+
+        if (color.HasValue)
+        {
+            HolidayHatPlugin.Log.LogDebug($"Found face color {color.Value} for {player.NickName}.");
+            return color.Value;
+        }
+        else
+        {
+            HolidayHatPlugin.Log.LogWarning($"No skin colors found for {player.NickName}. Using skin color [{data.customizationData.currentSkin}]!");
+            return Singleton<Customization>.Instance
+                .skins[data.customizationData.currentSkin].color;
         }
     }
 }

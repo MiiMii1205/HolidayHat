@@ -21,13 +21,13 @@ namespace HolidayHat;
 [BepInDependency(SoftDependencyFix.Plugin.Id)]
 [BepInDependency("com.github.MiiMii1205.BebeilleHats", BepInDependency.DependencyFlags.SoftDependency)]
 [BepInDependency("MoreCustomizations", BepInDependency.DependencyFlags.SoftDependency)]
-[BepInDependency("TeddyBRB.toomanyhats", BepInDependency.DependencyFlags.SoftDependency)]
 [BepInDependency("com.snosz.skincolorsliders", BepInDependency.DependencyFlags.SoftDependency)]
 public partial class HolidayHatPlugin : BaseUnityPlugin
 {
     public static Texture2D HolidayHatIcon = null!;
 
     public static Texture2D PartyHatIcon = null!;
+    public static Texture2D HeartArrowHeadHatIcon = null!;
     public static Texture2D StPatrickHatIcon = null!;
     public static Texture2D FishHatIcon = null!;
     public static Texture2D BunnyEarsIcon = null!;
@@ -162,36 +162,133 @@ public partial class HolidayHatPlugin : BaseUnityPlugin
         private set;
     }
 
-    public static Material NoRenderMaterial { get; private set; } = null!;
-    public static Material DefaultPilgrimHatMaterial { get; private set; } = null!;
-    public static Material DefaultRibbonHatMaterial { get; private set; } = null!;
-    public static Material DefaultPartyHatMaterial { get; private set; } = null!;
-    public static GameObject PartyHatPrefab { get; private set; } = null!;
-    public static GameObject StPatrickHatPrefab { get; private set; } = null!;
-    public static GameObject FishHatPrefab { get; private set; } = null!;
-    public static GameObject BunnyEarsPrefab { get; private set; } = null!;
-    public static GameObject HardHatPrefab { get; private set; } = null!;
-    public static GameObject PilgrimHatPrefab { get; private set; } = null!;
+    public static Material NoRenderMaterial
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private set;
+    } = null!;
+
+    public static Material DefaultPilgrimHatMaterial
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private set;
+    } = null!;
+
+    public static Material DefaultRibbonHatMaterial
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private set;
+    } = null!;
+
+    public static Material DefaultPartyHatMaterial
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private set;
+    } = null!;
+
+    public static GameObject PartyHatPrefab
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private set;
+    } = null!;
+
+    public static GameObject HeartArrowHeadHatPrefab
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private set;
+    } = null!;
+
+    public static GameObject StPatrickHatPrefab
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private set;
+    } = null!;
+
+    public static GameObject FishHatPrefab
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private set;
+    } = null!;
+
+    public static GameObject BunnyEarsPrefab
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private set;
+    } = null!;
+
+    public static GameObject HardHatPrefab
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private set;
+    } = null!;
+
+    public static GameObject PilgrimHatPrefab
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private set;
+    } = null!;
 
     public static List<GameObject> customHolidayHats;
-    public static GameObject SantaHatPrefab { get; private set; } = null!;
-    public static GameObject RibbonPrefab { get; private set; } = null!;
-    public static Dictionary<DateTime, int>.ValueCollection HolidayHatIndexes => holidayDictionary.Values;
+
+    public static GameObject SantaHatPrefab
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private set;
+    } = null!;
+
+    public static GameObject RibbonPrefab
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private set;
+    } = null!;
+
+    public static Dictionary<DateTime, int>.ValueCollection HolidayHatIndexes
+    {
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => holidayDictionary.Values;
+    }
 
     private void Awake()
     {
         Log = Logger;
 
         customHolidayHats = [];
-        new Harmony(Id).PatchAll(typeof(HolidayHatPatcher));
-
+        var harmony = new Harmony(Id);
+        harmony.PatchAll(typeof(HolidayHatPatcher));
+        
         DefaultPlayerHatIndex = Config.Bind("General", "Default Hat Index", 0,
             "The index hat to use when no holidays are currently happening, as it appears in the Passport. (starts at 0)");
 
         // Adding vanilla hats
         var cal = new GregorianCalendar();
 
-        SetHatIndex(new DateTime(DateTime.Today.Year, 2, 14), 39);
         SetHatIndex(new DateTime(DateTime.Today.Year, 4, 22), 35);
         SetHatIndex(GetNbSundayAfter(new DateTime(DateTime.Today.Year, 5, 1, cal), 2, cal), 8);
         SetHatIndex(GetNbSundayAfter(new DateTime(DateTime.Today.Year, 6, 1, cal), 3, cal), 33);
@@ -208,29 +305,17 @@ public partial class HolidayHatPlugin : BaseUnityPlugin
     private static Dictionary<Photon.Realtime.Player, int> _defaultHatIndexes = new();
     private static Dictionary<string, int> _hatIndexLookup = new();
     private static Dictionary<Photon.Realtime.Player, DateTime> _playerBootDates = new();
-
+    
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static int GetHatIndex(DateTime date)
     {
         return holidayDictionary[new DateTime(2000, date.Date.Month, date.Date.Day)];
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool HasHatIndex(DateTime date)
     {
         return holidayDictionary.ContainsKey(new DateTime(2000, date.Date.Month, date.Date.Day));
-    }
-
-    public static void SetHatIndex(DateTime date, int index)
-    {
-        var d = new DateTime(2000, date.Date.Month, date.Date.Day);
-        if (!holidayDictionary.TryAdd(d, index))
-        {
-            holidayDictionary[d] = index;
-            Log.LogInfo($"Changed Hat idx [{index}] for {date:m}");
-        }
-        else
-        {
-            Log.LogInfo($"Inserted Hat idx [{index}] for {date:m}");
-        }
     }
 
     private void LoadHolidayHatAssets(PeakBundle bundle)
@@ -252,6 +337,7 @@ public partial class HolidayHatPlugin : BaseUnityPlugin
         // Load every custom holiday hats
 
         PartyHatPrefab = LoadHolidayHat(bundle, "PartyHat.prefab");
+        HeartArrowHeadHatPrefab = LoadHolidayHat(bundle, "HeartArrowHeadHat.prefab");
         StPatrickHatPrefab = LoadHolidayHat(bundle, "StPatrickHat.prefab");
         FishHatPrefab = LoadHolidayHat(bundle, "FishHat.prefab");
         BunnyEarsPrefab = LoadHolidayHat(bundle, "BunnyEars.prefab");
@@ -259,8 +345,10 @@ public partial class HolidayHatPlugin : BaseUnityPlugin
         PilgrimHatPrefab = LoadHolidayHat(bundle, "PilgrimHat.prefab");
         SantaHatPrefab = LoadHolidayHat(bundle, "SantaHat.prefab");
         RibbonPrefab = LoadHolidayHat(bundle, "Ribbon.prefab");
+        
 
         customHolidayHats.Add(PartyHatPrefab);
+        customHolidayHats.Add(HeartArrowHeadHatPrefab);
         customHolidayHats.Add(StPatrickHatPrefab);
         customHolidayHats.Add(FishHatPrefab);
         customHolidayHats.Add(BunnyEarsPrefab);
@@ -272,67 +360,11 @@ public partial class HolidayHatPlugin : BaseUnityPlugin
         var today = DateTime.Today;
 
         ClientDate = today;
-
-        // var yesterdayHats = CheckSecularHolidays(today.AddDays(-1));
-        // var todayHats = CheckSecularHolidays(today);
-        // var tomorrowHats = CheckSecularHolidays(today.AddDays(1));
-        //
-        //
-        // // Load each hats
-        // if (yesterdayHats != null)
-        // {
-        //     if (yesterdayHats.EndsWith(".prefab"))
-        //     {
-        //         YesterdayHatPrefab = LoadHolidayHat(bundle, yesterdayHats);
-        //     }
-        //     else
-        //     {
-        //         // It's a vanilla hat
-        //         YesterdayHatIndex = int.Parse(yesterdayHats);
-        //     }
-        // }
-        // else
-        // {
-        //     YesterdayHatIndex = -1;
-        // }
-        //
-        // if (todayHats != null)
-        // {
-        //     if (todayHats.EndsWith(".prefab"))
-        //     {
-        //         TodayHatPrefab = LoadHolidayHat(bundle, todayHats);
-        //     }
-        //     else
-        //     {
-        //         // It's a vanilla hat
-        //         TodayHatIndex = int.Parse(todayHats);
-        //     }
-        // }
-        // else
-        // {
-        //     TodayHatIndex = -1;
-        // }
-        //
-        // if (tomorrowHats != null)
-        // {
-        //     if (tomorrowHats.EndsWith(".prefab"))
-        //     {
-        //         TomorrowHatPrefab = LoadHolidayHat(bundle, tomorrowHats);
-        //     }
-        //     else
-        //     {
-        //         // It's a vanilla hat
-        //         TomorrowHatIndex = int.Parse(tomorrowHats);
-        //     }
-        // }
-        // else
-        // {
-        //     TomorrowHatIndex = -1;
-        // }
-
+        
         HolidayHatIcon = bundle.LoadAsset<Texture2D>("HolidayHatOption.png");
 
         PartyHatIcon = bundle.LoadAsset<Texture2D>("PartyHatIcon.png");
+        HeartArrowHeadHatIcon = bundle.LoadAsset<Texture2D>("HeartArrowHeadHatIcon.png");
         StPatrickHatIcon = bundle.LoadAsset<Texture2D>("StPatrickHatIcon.png");
         FishHatIcon = bundle.LoadAsset<Texture2D>("FishHatIcon.png");
         BunnyEarsIcon = bundle.LoadAsset<Texture2D>("BunnyHatIcon.png");
@@ -356,32 +388,34 @@ public partial class HolidayHatPlugin : BaseUnityPlugin
                 ShaderExtensions.ReplaceShaders(hTransform.GetChild(i).gameObject);
             }
         }
-        
+
         return h;
     }
 
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static DateTime GetGregorianEaster(int year)
     {
         // Easter calculations are WEIRD! 
 
-        int a = year % 19;
-        int b = year / 100;
-        int c = year % 100;
+        var a = year % 19;
+        var b = year / 100;
+        var c = year % 100;
 
-        int d = b / 4;
-        int e = b % 4;
+        var d = b / 4;
+        var e = b % 4;
 
-        int f = (b + 8) / 25;
-        int g = (b - f + 1) / 3;
-        int h = (19 * a + b - d - g + 15) % 30;
+        var f = (b + 8) / 25;
+        var g = (b - f + 1) / 3;
+        var h = (19 * a + b - d - g + 15) % 30;
 
-        int i = c / 4;
-        int k = c % 4;
-        int l = (32 + 2 * e + 2 * i - h - k) % 7;
-        int m = (a + 11 * h + 22 * l) / 451;
+        var i = c / 4;
+        var k = c % 4;
+        var l = (32 + 2 * e + 2 * i - h - k) % 7;
+        var m = (a + 11 * h + 22 * l) / 451;
 
-        int month = (h + l - 7 * m + 114) / 31;
-        int day = ((h + l - 7 * m + 114) % 31) + 1;
+        var month = (h + l - 7 * m + 114) / 31;
+        var day = ((h + l - 7 * m + 114) % 31) + 1;
 
         return new DateTime(year, month, day);
     }
@@ -452,7 +486,8 @@ public partial class HolidayHatPlugin : BaseUnityPlugin
         return firstMonday.AddDays(7 * (nbMonday - 1));
     }
 
-
+    
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static string CleanedName(string dirtyString)
     {
         return dirtyString.Replace("(Clone)", "")
@@ -475,8 +510,7 @@ public partial class HolidayHatPlugin : BaseUnityPlugin
 
         if (td.Date == valen.Date)
         {
-            // Arrow
-            return "39";
+            return "HeartArrowHeadHat.prefab";
         }
 
         var stpat = new DateTime(cal.GetYear(td), 3, 17, cal);
@@ -1396,7 +1430,6 @@ public partial class HolidayHatPlugin : BaseUnityPlugin
         if (playerCharacter != null &&
             playerCharacter.refs.customization is { } c)
         {
-
             if (GameHandler.GetService<PersistentPlayerDataService>()
                     .GetPlayerData(player) is { } playerData)
             {
@@ -1407,7 +1440,7 @@ public partial class HolidayHatPlugin : BaseUnityPlugin
                         bc.overridePhotonPlayer.UserId == player.UserId)
                     {
                         HolidayHatPatcher.UpdateHolidayHat(bc, playerData, bc.overridePhotonPlayer);
-                        Log.LogDebug($"Updated hat for {bot} (copying {playerCharacter})");
+                        Log.LogDebug($"Updated Hat for {bot} (copy of {playerCharacter})");
                     }
                 }
 
@@ -1418,11 +1451,10 @@ public partial class HolidayHatPlugin : BaseUnityPlugin
                     if (ps.spawnedFromCharacter == playerCharacter)
                     {
                         ps.customization.UpdateDummy(player);
-                        Log.LogDebug($"Updated hat for {ps} (statue of {playerCharacter})");
+                        Log.LogDebug($"Updated Hat for {ps} (statue of {playerCharacter})");
                     }
                 }
             }
-            
         }
         else
         {
@@ -1435,37 +1467,8 @@ public partial class HolidayHatPlugin : BaseUnityPlugin
                 Log.LogError($"Can't update {player.NickName}'s hats!");
             }
         }
-        
     }
 
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static void UpdatePlayerDefaultHatIndex(Photon.Realtime.Player player, int defaultHatIndex)
-    {
-        if (_defaultHatIndexes.ContainsKey(player))
-        {
-            _defaultHatIndexes[player] = defaultHatIndex;
-            Log.LogDebug($"Updated default hat idx for {player} to {defaultHatIndex}");
-        }
-        else if (_defaultHatIndexes.TryAdd(player, defaultHatIndex))
-        {
-            Log.LogDebug($"Assigned default hat idx for {player} to {defaultHatIndex}");
-        }
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static void UpdatePlayerBootDate(Photon.Realtime.Player player, DateTime playerDate)
-    {
-        if (_playerBootDates.ContainsKey(player))
-        {
-            _playerBootDates[player] = playerDate;
-            Log.LogDebug($"Updated player boot date of {player} to {playerDate}");
-        }
-        else if (_playerBootDates.TryAdd(player, playerDate))
-        {
-            Log.LogDebug($"Assigned player boot date for {player} to {playerDate}");
-        }
-    }
 
     public static int GetHatOrDefault(Photon.Realtime.Player player)
     {
@@ -1484,7 +1487,7 @@ public partial class HolidayHatPlugin : BaseUnityPlugin
             {
                 // We'll have to recalculate the date manually
                 Log.LogInfo(
-                    $"{player.NickName}'s year is different from this client. Falling back to manual calculations...");
+                    $"{player.NickName}'s Boot Date Year is different from this client. Falling back to manual calculations...");
 
                 var calcHatIndex = CheckSecularHolidays(d);
 
@@ -1508,16 +1511,61 @@ public partial class HolidayHatPlugin : BaseUnityPlugin
         }
     }
 
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void UpdatePlayerDefaultHatIndex(Photon.Realtime.Player player, int defaultHatIndex)
+    {
+        if (_defaultHatIndexes.TryAdd(player, defaultHatIndex))
+        {
+            Log.LogDebug($"Initialized Default Hat IDX of {player.NickName} to [{defaultHatIndex}]");
+        }
+        else
+        {
+            _defaultHatIndexes[player] = defaultHatIndex;
+            Log.LogDebug($"Updated Default Hat IDX of {player.NickName} to [{defaultHatIndex}]");
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void UpdatePlayerBootDate(Photon.Realtime.Player player, DateTime playerDate)
+    {
+        if (_playerBootDates.TryAdd(player, playerDate))
+        {
+            Log.LogDebug($"Initialized Boot Date of {player.NickName} to {playerDate:m}");
+        }
+        else
+        {
+            _playerBootDates[player] = playerDate;
+            Log.LogDebug($"Updated Boot Date of {player.NickName} to {playerDate:m}");
+        }
+    }
+    
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void SetHatLookup(string name, int index)
     {
         if (_hatIndexLookup.TryAdd(name, index))
         {
-            Log.LogInfo($"Inserted Hat idx [{index}] for {name}");
+            Log.LogInfo($"Initialized Hat IDX of {name} to [{index}]");
         }
         else
         {
             _hatIndexLookup[name] = index;
-            Log.LogInfo($"Changed Hat idx [{index}] for {name}");
+            Log.LogInfo($"Updated Hat IDX of {name} to [{index}]");
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void SetHatIndex(DateTime date, int index)
+    {
+        var d = new DateTime(2000, date.Date.Month, date.Date.Day);
+        if (holidayDictionary.TryAdd(d, index))
+        {
+            Log.LogInfo($"Initialized Hat IDX of {date:m} to [{index}]");
+        }
+        else
+        {
+            holidayDictionary[d] = index;
+            Log.LogInfo($"Updated Hat IDX of {date:m} to [{index}]");
         }
     }
 }

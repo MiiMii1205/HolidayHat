@@ -21,21 +21,9 @@ public class HolidayHatHandler: MonoBehaviourPunCallbacks
 
     public override void OnCreatedRoom()
     {
-        // Send the room's timestamp to the new player
-        if (PhotonNetwork.IsMasterClient)
-        {
-            HolidayHatPlugin.Log.LogInfo(
-                $"Setting up the room's startup time ({(HolidayHatPlugin.RoomDate ?? HolidayHatPlugin.ClientDate)})...");
-
-            // If the master client don't have a room date, then it IS the original master. Otherwise, ownership has changed and we have to use the original room data
-            photonView.RPC(nameof(RPC_SyncRoomStartupTimestamp),
-                RpcTarget.All,
-                (HolidayHatPlugin.RoomDate ?? HolidayHatPlugin.ClientDate).Ticks);
-        }
-
-        photonView.RPC(nameof(RPC_SyncDefaultHat), RpcTarget.All, PhotonNetwork.LocalPlayer.ActorNumber,
-            HolidayHatPlugin.DefaultPlayerHatIndex.Value);
+        SendAll(RpcTarget.All);
     }
+    
     private void OnDestroy()
     {
         HolidayHatPlugin.DefaultPlayerHatIndex.SettingChanged -= SyncDefaultHatIndex;
@@ -43,45 +31,80 @@ public class HolidayHatHandler: MonoBehaviourPunCallbacks
 
     private void SyncDefaultHatIndex(object sender, EventArgs e)
     {
+        HolidayHatPlugin.Log.LogInfo(
+            $"Sending our Default Hat IDX ([{HolidayHatPlugin.DefaultPlayerHatIndex.Value}]) to everyone...");
+        
         photonView.RPC(nameof(RPC_SyncDefaultHat), RpcTarget.All, PhotonNetwork.LocalPlayer.ActorNumber,
             HolidayHatPlugin.DefaultPlayerHatIndex.Value);
     }
 
     public override void OnPlayerEnteredRoom(Photon.Realtime.Player newPlayer)
     {
-        // Send the room's timestamp to the new player
-        if(PhotonNetwork.IsMasterClient)
+        SendAll(newPlayer);
+    }
+
+    private void SendAll(RpcTarget target)
+    {
+        if (PhotonNetwork.IsMasterClient)
         {
             HolidayHatPlugin.Log.LogInfo(
-                $"Sending the room's startup time ({(HolidayHatPlugin.RoomDate ?? HolidayHatPlugin.ClientDate)}) to {newPlayer.NickName}...");
-            
+                $"Sending the room's startup time ({(HolidayHatPlugin.RoomDate ?? HolidayHatPlugin.ClientDate):M}) to everyone...");
+
             // If the master client don't have a room date, then it IS the original master. Otherwise, ownership has changed and we have to use the original room data
-            photonView.RPC(nameof(RPC_SyncRoomStartupTimestamp), 
-                newPlayer,
+            photonView.RPC(nameof(RPC_SyncRoomStartupTimestamp),
+                target,
                 (HolidayHatPlugin.RoomDate ?? HolidayHatPlugin.ClientDate).Ticks);
         }
         
-        // Send our default hat index to the new player
+        HolidayHatPlugin.Log.LogInfo(
+            $"Sending our Default Hat IDX ([{HolidayHatPlugin.DefaultPlayerHatIndex.Value}]) to everyone...");
 
-        HolidayHatPlugin.Log.LogInfo($"Sending our default hat index ({HolidayHatPlugin.DefaultPlayerHatIndex.Value}) to {newPlayer.NickName}...");
-        
-        photonView.RPC(nameof(RPC_SyncDefaultHat), 
-            newPlayer, 
+        photonView.RPC(nameof(RPC_SyncDefaultHat), target, 
             PhotonNetwork.LocalPlayer.ActorNumber,
             HolidayHatPlugin.DefaultPlayerHatIndex.Value);
-    }
+        
+        HolidayHatPlugin.Log.LogInfo($"Sending our Boot Date ({HolidayHatPlugin.ClientDate:M}) to everyone...");
 
+        photonView.RPC(nameof(RPC_SyncBootDate), target, 
+            PhotonNetwork.LocalPlayer.ActorNumber,
+            HolidayHatPlugin.ClientDate.Year,
+            HolidayHatPlugin.ClientDate.Month, 
+            HolidayHatPlugin.ClientDate.Day);
+        
+    }
+    
+    private void SendAll(Photon.Realtime.Player target)
+    {
+        if (PhotonNetwork.IsMasterClient)
+        {
+            HolidayHatPlugin.Log.LogInfo(
+                $"Sending the room's startup time ({(HolidayHatPlugin.RoomDate ?? HolidayHatPlugin.ClientDate):M}) to {target.NickName}...");
+
+            // If the master client don't have a room date, then it IS the original master. Otherwise, ownership has changed and we have to use the original room data
+            photonView.RPC(nameof(RPC_SyncRoomStartupTimestamp), target,
+                (HolidayHatPlugin.RoomDate ?? HolidayHatPlugin.ClientDate).Ticks);
+        }
+        
+        HolidayHatPlugin.Log.LogInfo(
+            $"Sending our Default Hat IDX ([{HolidayHatPlugin.DefaultPlayerHatIndex.Value}]) to {target.NickName}...");
+
+        photonView.RPC(nameof(RPC_SyncDefaultHat), target, 
+            PhotonNetwork.LocalPlayer.ActorNumber,
+            HolidayHatPlugin.DefaultPlayerHatIndex.Value);
+        
+        HolidayHatPlugin.Log.LogInfo($"Sending our Boot Date ({HolidayHatPlugin.ClientDate:M}) to {target.NickName}...");
+
+        photonView.RPC(nameof(RPC_SyncBootDate), target, 
+            PhotonNetwork.LocalPlayer.ActorNumber,
+            HolidayHatPlugin.ClientDate.Year,
+            HolidayHatPlugin.ClientDate.Month,
+            HolidayHatPlugin.ClientDate.Day);
+        
+    }
+    
     public override void OnJoinedRoom()
     {
-        HolidayHatPlugin.Log.LogInfo(
-            $"Sending our default hat index ({HolidayHatPlugin.DefaultPlayerHatIndex.Value}) to everyone...");
-        
-        photonView.RPC(nameof(RPC_SyncDefaultHat), RpcTarget.All, PhotonNetwork.LocalPlayer.ActorNumber, HolidayHatPlugin.DefaultPlayerHatIndex.Value);
-        
-        HolidayHatPlugin.Log.LogInfo($"Sending our boot date to other players");
-        
-        photonView.RPC(nameof(RPC_SyncBootDate), RpcTarget.All, PhotonNetwork.LocalPlayer.ActorNumber,
-            HolidayHatPlugin.ClientDate.Year, HolidayHatPlugin.ClientDate.Month, HolidayHatPlugin.ClientDate.Day );
+        SendAll(RpcTarget.All);
     }
 
     [PunRPC]
@@ -99,14 +122,14 @@ public class HolidayHatHandler: MonoBehaviourPunCallbacks
         if (PhotonNetwork.TryGetPlayer(actorNumber, out var p))
         {
             HolidayHatPlugin.Log.LogInfo(
-                $"Received default hat idx ({defaultHatIndex}) for {p.NickName}!");
+                $"Received new Default Hat IDX of {p.NickName}: [{defaultHatIndex}]!");
             
             HolidayHatPlugin.UpdatePlayerDefaultHatIndex(p, defaultHatIndex);
-            RefreshHolidayHats(p, $"because we received {p.NickName}'s new default hat :{defaultHatIndex}");
+            RefreshHolidayHats(p, $"because we received {p.NickName}'s new Default Hat IDX : [{defaultHatIndex}]");
         }
         else
         {
-            HolidayHatPlugin.Log.LogError($"Can't receive default hat index for player {actorNumber}!");
+            HolidayHatPlugin.Log.LogError($"Can't receive Default Hat IDX of  player {actorNumber}!");
         }
     }
 
@@ -131,7 +154,7 @@ public class HolidayHatHandler: MonoBehaviourPunCallbacks
             else
             {
                 HolidayHatPlugin.Log.LogInfo(
-                    $"{p} is not wearing the Holiday Hat. No need to update...");
+                    $"{p.NickName} is not wearing the Holiday Hat. No need to update...");
             }
         }
         else
@@ -152,11 +175,13 @@ public class HolidayHatHandler: MonoBehaviourPunCallbacks
     {
         if (PhotonNetwork.TryGetPlayer(actorNumber, out var p))
         {
-            HolidayHatPlugin.Log.LogInfo(
-                $"Received boot date for {p.NickName}");
+            var playerBootDate = new DateTime(year, month, day);
             
-            HolidayHatPlugin.UpdatePlayerBootDate(p, new DateTime(year, month, day));
-            RefreshHolidayHats(p, $"because we received {p.NickName}'s boot date :{new DateTime(year, month, day)}");
+            HolidayHatPlugin.Log.LogInfo(
+                $"Received Boot Date for {p.NickName}: ({playerBootDate:M})");
+            
+            HolidayHatPlugin.UpdatePlayerBootDate(p, playerBootDate);
+            RefreshHolidayHats(p, $"because we received {p.NickName}'s Boot Date : {playerBootDate:M}");
         }
         else
         {
